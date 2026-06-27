@@ -2,6 +2,7 @@ export interface Post {
 	id: string;
 	data: {
 		title: string;
+		slug: string;
 		tags: string[];
 		category?: string;
 		published: Date;
@@ -13,10 +14,6 @@ export interface Post {
 		words: number;
 		minutes: number;
 		excerpt?: string;
-		nextId?: string;
-		nextTitle?: string;
-		prevId?: string;
-		prevTitle?: string;
 	};
 }
 
@@ -33,6 +30,33 @@ interface ApiPostItem {
 }
 interface ApiNeighbor { id: string; title: string; }
 
+interface ApiDetailPost {
+	id: string;
+	title: string;
+	slug: string;
+	content: string;
+	summary: string;
+	image: string;
+	author: string;
+	viewCount: number;
+	categoryId?: string;
+	categoryName?: string;
+	tags: ApiTag[];
+	publishedAt: string;
+	pinned: boolean;
+	lang?: string;
+	hasPassword: boolean;
+	password?: string;
+	passwordHint?: string;
+}
+
+interface ApiNeighborItem {
+	id: string;
+	title: string;
+	slug: string;
+	publishedAt?: string;
+}
+
 function countWords(text: string): number {
 	return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
@@ -43,6 +67,7 @@ function normalizePost(p: ApiPostItem): Post {
 		id: p.id,
 		data: {
 			title: p.title,
+			slug: p.slug,
 			tags: (p.tags ?? []).map(t => t.name),
 			category: p.categoryName,
 			published: new Date(p.publishedAt),
@@ -139,5 +164,19 @@ export async function fetchCategoryList(): Promise<ApiCategoryItem[]> {
 	const res = await fetch(`${apiBase()}/api/v1/categories`);
 	const json = await res.json();
 	return json.data.items as ApiCategoryItem[];
+}
+
+export async function fetchPostBySlug(slug: string): Promise<{ post: ApiDetailPost; extensions: Record<string, unknown> }> {
+	const res = await fetch(`${apiBase()}/api/v1/posts/slug/${encodeURIComponent(slug)}`);
+	if (!res.ok) throw new Error(`post not found: ${slug}`);
+	const json = await res.json();
+	return json.data as { post: ApiDetailPost; extensions: Record<string, unknown> };
+}
+
+export async function fetchPostNeighborsBySlug(slug: string): Promise<{ prev?: ApiNeighborItem; next?: ApiNeighborItem }> {
+	const res = await fetch(`${apiBase()}/api/v1/posts/slug/${encodeURIComponent(slug)}/neighbors`);
+	if (!res.ok) return {};
+	const json = await res.json();
+	return (json.data ?? {}) as { prev?: ApiNeighborItem; next?: ApiNeighborItem };
 }
 

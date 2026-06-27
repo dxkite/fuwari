@@ -2,10 +2,11 @@
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import Icon from "@iconify/svelte";
-import { getPostUrlById } from "@utils/url-utils.ts";
+import { getPostUrlBySlug } from "@utils/url-utils.ts";
 
 interface SearchPost {
 	id: string;
+	slug: string;
 	title: string;
 	excerpt: string;
 }
@@ -50,8 +51,9 @@ const doSearch = async (keyword: string, isDesktop: boolean): Promise<void> => {
 		);
 		const json = await res.json();
 		results = (json.data?.items ?? []).map(
-			(p: { id: string; title: string; summary: string }) => ({
+			(p: { id: string; slug: string; title: string; summary: string }) => ({
 				id: p.id,
+				slug: p.slug,
 				title: p.title,
 				excerpt: p.summary ?? "",
 			}),
@@ -114,7 +116,7 @@ top-20 left-4 md:left-[unset] right-4 shadow-2xl rounded-2xl p-2">
         <div class="text-center text-sm text-50 py-4">Searching...</div>
     {:else}
         {#each results as item}
-            <a href={getPostUrlById(item.id)}
+            <a href={getPostUrlBySlug(item.slug)}
                class="transition first-of-type:mt-2 lg:first-of-type:mt-0 group block
            rounded-xl text-lg px-3 py-2 hover:bg-[var(--btn-plain-bg-hover)] active:bg-[var(--btn-plain-bg-active)]">
                 <div class="transition text-90 inline-flex font-bold group-hover:text-[var(--primary)]">

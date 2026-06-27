@@ -1,136 +1,164 @@
 ---
-import path from "node:path";
+import MarkdownIt from 'markdown-it';
+import type { MarkdownHeading } from 'astro';
 import License from "@components/misc/License.astro";
 import Markdown from "@components/misc/Markdown.astro";
+import ImageWrapper from "@components/misc/ImageWrapper.astro";
+import PostMetadata from "@components/PostMeta.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getSortedPosts } from "@utils/content-utils";
-import { getDir, getPostUrlBySlug } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { licenseConfig } from "src/config";
-import ImageWrapper from "../../components/misc/ImageWrapper.astro";
-import PostMetadata from "../../components/PostMeta.astro";
-import { profileConfig, siteConfig } from "../../config";
-import { formatDateToYYYYMMDD } from "../../utils/date-utils";
+import { licenseConfig as licenseConfigDefault, profileConfig } from "src/config";
+import { fetchPostBySlug, fetchPostNeighborsBySlug, fetchConfigKey } from "@utils/api-utils";
+import { getPostUrlBySlug } from "@utils/url-utils";
+import { formatDateToYYYYMMDD } from "@utils/date-utils";
 
-export async function getStaticPaths() {
-	const blogEntries = await getSortedPosts();
-	return blogEntries.map((entry) => ({
-		params: { slug: entry.slug },
-		props: { entry },
-	}));
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/');
+
+let postData: Awaited<ReturnType<typeof fetchPostBySlug>>;
+try {
+	postData = await fetchPostBySlug(slug);
+} catch {
+	return new Response(null, { status: 404 });
 }
 
-const { entry } = Astro.props;
-const { Content, headings } = await entry.render();
+const post = postData.post;
+if (!post) return new Response(null, { status: 404 });
 
-const { remarkPluginFrontmatter } = await entry.render();
+const [neighbors, licenseConf] = await Promise.all([
+	fetchPostNeighborsBySlug(slug).catch(() => ({})),
+	fetchConfigKey('license', licenseConfigDefault),
+]);
+
+// Render markdown to HTML
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+const content = post.content ?? '';
+const htmlContent = md.render(content);
+
+// Extract headings for TOC
+const tokens = md.parse(content, {});
+const headings: MarkdownHeading[] = [];
+for (let i = 0; i < tokens.length; i++) {
+	if (tokens[i].type === 'heading_open') {
+		const depth = parseInt(tokens[i].tag.slice(1), 10);
+		const inlineToken = tokens[i + 1];
+		const text = (inlineToken?.children ?? [])
+			.filter((t: { type: string }) => t.type !== 'html_inline')
+			.map((t: { content: string }) => t.content)
+			.join('');
+		const headingSlug = text.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+		headings.push({ depth, slug: headingSlug, text });
+	}
+}
+
+// Word count (CJK characters each count as 1 word)
+const cjkCount = (content.match(/[぀-ヿ㐀-鿿豈-﫿]/g) ?? []).length;
+const otherCount = (content.replace(/[぀-ヿ㐀-鿿豈-﫿]/g, '').trim().match(/\S+/g) ?? []).length;
+const words = cjkCount + otherCount;
+const minutes = Math.max(1, Math.ceil(words / 200));
+
+const published = new Date(post.publishedAt);
+const tags = (post.tags ?? []).map(t => t.name);
+const category = post.categoryName ?? null;
 
 const jsonLd = {
 	"@context": "https://schema.org",
 	"@type": "BlogPosting",
-	headline: entry.data.title,
-	description: entry.data.description || entry.data.title,
-	keywords: entry.data.tags,
+	headline: post.title,
+	description: post.summary || post.title,
+	keywords: tags,
 	author: {
 		"@type": "Person",
 		name: profileConfig.name,
 		url: Astro.site,
 	},
-	datePublished: formatDateToYYYYMMDD(entry.data.published),
-	inLanguage: entry.data.lang
-		? entry.data.lang.replace("_", "-")
-		: siteConfig.lang.replace("_", "-"),
-	// TODO include cover image here
+	datePublished: formatDateToYYYYMMDD(published),
+	inLanguage: post.lang ? post.lang.replace("_", "-") : "zh-CN",
 };
 ---
-<MainGridLayout banner={entry.data.image} title={entry.data.title} description={entry.data.description} lang={entry.data.lang} setOGTypeArticle={true} headings={headings}>
+<MainGridLayout banner={post.image || undefined} title={post.title} description={post.summary} lang={post.lang} setOGTypeArticle={true} headings={headings}>
     <script is:inline slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)}></script>
     <div class="flex w-full rounded-[var(--radius-large)] overflow-hidden relative mb-4">
-        <div id="post-container" class:list={["card-base z-10 px-6 md:px-9 pt-6 pb-4 relative w-full ",
-            {}
-        ]}>
+        <div id="post-container" class:list={["card-base z-10 px-6 md:px-9 pt-6 pb-4 relative w-full", {}]}>
             <!-- word count and reading time -->
             <div class="flex flex-row text-black/30 dark:text-white/30 gap-5 mb-3 transition onload-animation">
                 <div class="flex flex-row items-center">
                     <div class="transition h-6 w-6 rounded-md bg-black/5 dark:bg-white/10 text-black/50 dark:text-white/50 flex items-center justify-center mr-2">
                         <Icon name="material-symbols:notes-rounded"></Icon>
                     </div>
-                    <div class="text-sm">{remarkPluginFrontmatter.words} {" " + i18n(I18nKey.wordsCount)}</div>
+                    <div class="text-sm">{words} {" " + i18n(I18nKey.wordsCount)}</div>
                 </div>
                 <div class="flex flex-row items-center">
                     <div class="transition h-6 w-6 rounded-md bg-black/5 dark:bg-white/10 text-black/50 dark:text-white/50 flex items-center justify-center mr-2">
                         <Icon name="material-symbols:schedule-outline-rounded"></Icon>
                     </div>
                     <div class="text-sm">
-                        {remarkPluginFrontmatter.minutes} {" " + i18n(remarkPluginFrontmatter.minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}
+                        {minutes} {" " + i18n(minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}
                     </div>
                 </div>
             </div>
 
             <!-- title -->
             <div class="relative onload-animation">
-                <div
-                    data-pagefind-body data-pagefind-weight="10" data-pagefind-meta="title"
-                    class="transition w-full block font-bold mb-3
+                <div class="transition w-full block font-bold mb-3
                     text-3xl md:text-[2.25rem]/[2.75rem]
                     text-black/90 dark:text-white/90
                     md:before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
-                    before:absolute before:top-[0.75rem] before:left-[-1.125rem]
-                ">
-                    {entry.data.title}
+                    before:absolute before:top-[0.75rem] before:left-[-1.125rem]">
+                    {post.title}
                 </div>
             </div>
 
             <!-- metadata -->
             <div class="onload-animation">
                 <PostMetadata
-                        class="mb-5"
-                        published={entry.data.published}
-                        updated={entry.data.updated}
-                        tags={entry.data.tags}
-                        category={entry.data.category}
+                    class="mb-5"
+                    published={published}
+                    tags={tags}
+                    category={category}
                 ></PostMetadata>
-                {!entry.data.image && <div class="border-[var(--line-divider)] border-dashed border-b-[1px] mb-5"></div>}
+                {!post.image && <div class="border-[var(--line-divider)] border-dashed border-b-[1px] mb-5"></div>}
             </div>
 
-            <!-- always show cover as long as it has one -->
-
-            {entry.data.image &&
-                <ImageWrapper id="post-cover" src={entry.data.image} basePath={path.join("content/posts/", getDir(entry.id))} class="mb-8 rounded-xl banner-container onload-animation"/>
-            }
-
+            {post.image && (
+                <ImageWrapper id="post-cover" src={post.image} class="mb-8 rounded-xl banner-container onload-animation" />
+            )}
 
             <Markdown class="mb-6 markdown-content onload-animation">
-                <Content />
+                <div set:html={htmlContent} />
             </Markdown>
 
-            {licenseConfig.enable && <License title={entry.data.title} slug={entry.slug} pubDate={entry.data.published} class="mb-6 rounded-xl license-container onload-animation"></License>}
-
+            {licenseConf.enable && (
+                <License title={post.title} slug={post.slug} pubDate={published} class="mb-6 rounded-xl license-container onload-animation" />
+            )}
         </div>
     </div>
 
+    <!-- prev / next navigation -->
     <div class="flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full">
-        <a href={entry.data.nextSlug ? getPostUrlBySlug(entry.data.nextSlug) : "#"}
-           class:list={["w-full font-bold overflow-hidden active:scale-95", {"pointer-events-none": !entry.data.nextSlug}]}>
-            {entry.data.nextSlug && <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-start gap-4" >
-                <Icon name="material-symbols:chevron-left-rounded" class="text-[2rem] text-[var(--primary)]" />
-                <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
-                    {entry.data.nextTitle}
+        <a href={neighbors.next?.slug ? getPostUrlBySlug(neighbors.next.slug) : "#"}
+           class:list={["w-full font-bold overflow-hidden active:scale-95", {"pointer-events-none": !neighbors.next?.slug}]}>
+            {neighbors.next?.slug && (
+                <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-start gap-4">
+                    <Icon name="material-symbols:chevron-left-rounded" class="text-[2rem] text-[var(--primary)]" />
+                    <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
+                        {neighbors.next.title}
+                    </div>
                 </div>
-            </div>}
+            )}
         </a>
-
-        <a href={entry.data.prevSlug ? getPostUrlBySlug(entry.data.prevSlug) : "#"}
-           class:list={["w-full font-bold overflow-hidden active:scale-95", {"pointer-events-none": !entry.data.prevSlug}]}>
-            {entry.data.prevSlug && <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-end gap-4">
-                <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
-                    {entry.data.prevTitle}
+        <a href={neighbors.prev?.slug ? getPostUrlBySlug(neighbors.prev.slug) : "#"}
+           class:list={["w-full font-bold overflow-hidden active:scale-95", {"pointer-events-none": !neighbors.prev?.slug}]}>
+            {neighbors.prev?.slug && (
+                <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-end gap-4">
+                    <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
+                        {neighbors.prev.title}
+                    </div>
+                    <Icon name="material-symbols:chevron-right-rounded" class="text-[2rem] text-[var(--primary)]" />
                 </div>
-                <Icon name="material-symbols:chevron-right-rounded" class="text-[2rem] text-[var(--primary)]" />
-            </div>}
+            )}
         </a>
     </div>
-
 </MainGridLayout>
