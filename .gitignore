@@ -29,3 +29,9 @@ yarn.lock
 # ide
 .idea
 *.iml
+
+# netlify SSR build output
+.netlify/
+
+# astro-runtime pack
+*.pack
