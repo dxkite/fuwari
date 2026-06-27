@@ -1,11 +1,17 @@
 ---
 import I18nKey from "../../i18n/i18nKey";
 import { i18n } from "../../i18n/translation";
-import { getCategoryList } from "../../utils/content-utils";
+import { fetchCategoryList } from "../../utils/api-utils";
+import { getCategoryUrl } from "../../utils/url-utils";
 import ButtonLink from "../control/ButtonLink.astro";
 import WidgetLayout from "./WidgetLayout.astro";
 
-const categories = await getCategoryList();
+const rawCategories = await fetchCategoryList();
+const categories = rawCategories.map(c => ({
+	name: c.name,
+	count: c.articleCount,
+	url: getCategoryUrl(c.name),
+}));
 
 const COLLAPSED_HEIGHT = "7.5rem";
 const COLLAPSE_THRESHOLD = 5;

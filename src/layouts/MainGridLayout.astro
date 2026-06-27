@@ -7,7 +7,8 @@ import type { MarkdownHeading } from "astro";
 import { Icon } from "astro-icon/components";
 import ImageWrapper from "../components/misc/ImageWrapper.astro";
 import TOC from "../components/widget/TOC.astro";
-import { siteConfig } from "../config";
+import { siteConfig as siteConfigDefault } from "../config";
+import { fetchConfigKey } from "../utils/api-utils";
 import {
 	BANNER_HEIGHT,
 	BANNER_HEIGHT_EXTEND,
@@ -32,6 +33,7 @@ const {
 	setOGTypeArticle,
 	headings = [],
 } = Astro.props;
+const siteConfig = await fetchConfigKey('site', siteConfigDefault);
 const hasBannerCredit =
 	siteConfig.banner.enable && siteConfig.banner.credit.enable;
 const hasBannerLink = !!siteConfig.banner.credit.url;

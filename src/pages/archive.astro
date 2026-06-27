@@ -3,12 +3,31 @@ import ArchivePanel from "@components/ArchivePanel.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getSortedPostsList } from "../utils/content-utils";
+import { fetchPostList } from "../utils/api-utils";
 
-const sortedPostsList = await getSortedPostsList();
+const pageParam = Astro.url.searchParams.get("page");
+const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+const PAGE_SIZE = 50;
+
+const { total, items } = await fetchPostList(currentPage, PAGE_SIZE);
+const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 ---
 
 <MainGridLayout title={i18n(I18nKey.archive)}>
-    <ArchivePanel sortedPosts={sortedPostsList} client:only="svelte"></ArchivePanel>
+    <ArchivePanel sortedPosts={items} client:only="svelte"></ArchivePanel>
+    {lastPage > 1 && (
+        <div class="flex justify-center gap-4 mt-4">
+            {currentPage > 1 && (
+                <a href={`/archive/?page=${currentPage - 1}`} class="btn-card px-4 py-2 rounded-lg">
+                    {i18n(I18nKey.prev)}
+                </a>
+            )}
+            <span class="px-4 py-2 text-75">{currentPage} / {lastPage}</span>
+            {currentPage < lastPage && (
+                <a href={`/archive/?page=${currentPage + 1}`} class="btn-card px-4 py-2 rounded-lg">
+                    {i18n(I18nKey.next)}
+                </a>
+            )}
+        </div>
+    )}
 </MainGridLayout>
-

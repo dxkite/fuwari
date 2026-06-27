@@ -1,18 +1,39 @@
 ---
-import type { GetStaticPaths } from "astro";
 import Pagination from "../components/control/Pagination.astro";
 import PostPage from "../components/PostPage.astro";
 import { PAGE_SIZE } from "../constants/constants";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import { getSortedPosts } from "../utils/content-utils";
+import { fetchPostList } from "../utils/api-utils";
+import { url } from "../utils/url-utils";
 
-export const getStaticPaths = (async ({ paginate }) => {
-	const allBlogPosts = await getSortedPosts();
-	return paginate(allBlogPosts, { pageSize: PAGE_SIZE });
-}) satisfies GetStaticPaths;
-// https://github.com/withastro/astro/issues/6507#issuecomment-1489916992
+const pageParam = Astro.params.page;
+const currentPage = pageParam ? parseInt(pageParam, 10) : 1;
 
-const { page } = Astro.props;
+if (isNaN(currentPage) || currentPage < 1) {
+	return Astro.redirect("/");
+}
+
+const { total, items } = await fetchPostList(currentPage, PAGE_SIZE);
+const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+if (currentPage > lastPage) {
+	return Astro.redirect("/");
+}
+
+const page = {
+	data: items,
+	currentPage,
+	lastPage,
+	url: {
+		prev: currentPage > 1 ? url(currentPage === 2 ? "/" : `/${currentPage - 1}/`) : undefined,
+		next: currentPage < lastPage ? url(`/${currentPage + 1}/`) : undefined,
+		current: url(currentPage === 1 ? "/" : `/${currentPage}/`),
+	},
+	start: (currentPage - 1) * PAGE_SIZE,
+	end: Math.min(currentPage * PAGE_SIZE - 1, total - 1),
+	total,
+	size: PAGE_SIZE,
+};
 
 const len = page.data.length;
 ---

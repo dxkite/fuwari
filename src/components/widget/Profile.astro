@@ -1,10 +1,11 @@
 ---
 import { Icon } from "astro-icon/components";
-import { profileConfig } from "../../config";
+import { profileConfig as profileConfigDefault } from "../../config";
+import { fetchConfigKey } from "../../utils/api-utils";
 import { url } from "../../utils/url-utils";
 import ImageWrapper from "../misc/ImageWrapper.astro";
 
-const config = profileConfig;
+const config = await fetchConfigKey('profile', profileConfigDefault);
 ---
 <div class="card-base p-3">
     <a aria-label="Go to About Page" href={url('/about/')}

@@ -1,8 +1,10 @@
 ---
 
-import { profileConfig } from "../config";
+import { profileConfig as profileConfigDefault } from "../config";
+import { fetchConfigKey } from "../utils/api-utils";
 import { url } from "../utils/url-utils";
 
+const profileConfig = await fetchConfigKey('profile', profileConfigDefault);
 const currentYear = new Date().getFullYear();
 ---
 
