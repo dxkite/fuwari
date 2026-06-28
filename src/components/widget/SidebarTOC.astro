@@ -15,7 +15,7 @@ const isPostsRoute = Astro.url.pathname.startsWith(url("/posts/"));
 
 {isPostsRoute && siteConfig.toc.enable && (
 <WidgetLayout name="目录" id="sidebar-toc" class={className} style={style}>
-  <div class="toc-scroll-container" style="max-height: calc(100vh - 25rem)">
+  <div class="toc-scroll-container" style="max-height: calc(100vh - 6rem)">
     <div id="sidebar-toc-content" class="toc-content">
       <!-- TOCManager 动态填充 -->
     </div>
