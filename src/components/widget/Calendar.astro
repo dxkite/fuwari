@@ -76,7 +76,7 @@ const postUrlPrefix = url("/posts/");
   </div>
 </WidgetLayout>
 
-<script is:inline data-swup-ignore-script define:vars={{ monthNames, weekDays, yearText, currentLang, calendarDataUrl, postUrlPrefix, heatmapWeekTemplate }}>
+<script is:inline define:vars={{ monthNames, weekDays, yearText, currentLang, calendarDataUrl, postUrlPrefix, heatmapWeekTemplate }}>
   // State variables
   let displayYear = new Date().getFullYear();
   let displayMonth = new Date().getMonth();
@@ -509,9 +509,11 @@ const postUrlPrefix = url("/posts/");
 
   initCalendar();
 
-  document.addEventListener("swup:content:replace", () => {
-    setTimeout(initCalendar, 100);
-  });
+  if (window.__calendarSwupHandler) {
+    document.removeEventListener("swup:content:replace", window.__calendarSwupHandler);
+  }
+  window.__calendarSwupHandler = function() { setTimeout(initCalendar, 100); };
+  document.addEventListener("swup:content:replace", window.__calendarSwupHandler);
 </script>
 
 <style>
