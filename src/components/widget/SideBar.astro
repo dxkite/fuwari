@@ -6,6 +6,7 @@ import Categories from "./Categories.astro";
 import Profile from "./Profile.astro";
 import SidebarTOC from "./SidebarTOC.astro";
 import Tag from "./Tags.astro";
+import { url } from "../../utils/url-utils";
 
 interface Props {
 	class?: string;
@@ -15,13 +16,19 @@ interface Props {
 
 const { side, headings } = Astro.props;
 const className = Astro.props.class;
+const isPostsRoute = Astro.url.pathname.startsWith(url("/posts/"));
 ---
 {side === "right" ? (
 <div class:list={[className, "w-full"]}>
     <div class="sticky top-4 flex flex-col gap-4">
-        <SidebarTOC class="onload-animation" />
-        <Calendar class="onload-animation"></Calendar>
-        <Announcement class="onload-animation" />
+        {isPostsRoute ? (
+            <SidebarTOC class="onload-animation" />
+        ) : (
+            <>
+                <Announcement class="onload-animation" />
+                <Calendar class="onload-animation" />
+            </>
+        )}
     </div>
 </div>
 ) : (

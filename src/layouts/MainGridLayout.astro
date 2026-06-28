@@ -133,5 +133,5 @@ function syncRightSidebarLayout() {
     if (!mainGrid || !rs) return;
     mainGrid.classList.toggle('has-right-sidebar', rs.children.length > 0);
 }
-document.addEventListener('swup:contentReplaced', syncRightSidebarLayout);
+document.addEventListener('swup:content:replace', syncRightSidebarLayout);
 </script>

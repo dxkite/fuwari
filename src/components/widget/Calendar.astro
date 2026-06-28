@@ -509,7 +509,7 @@ const postUrlPrefix = url("/posts/");
 
   initCalendar();
 
-  document.addEventListener("swup:contentReplaced", () => {
+  document.addEventListener("swup:content:replace", () => {
     setTimeout(initCalendar, 100);
   });
 </script>

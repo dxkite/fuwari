@@ -51,5 +51,5 @@ const isPostsRoute = Astro.url.pathname.startsWith(url("/posts/"));
   }
 
   // post→post Swup 跳转后重新扫描新文章标题
-  document.addEventListener("swup:contentReplaced", () => setTimeout(initSidebarTOC, 100));
+  document.addEventListener("swup:content:replace", () => setTimeout(initSidebarTOC, 100));
 </script>
