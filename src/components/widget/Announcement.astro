@@ -1,0 +1,56 @@
+---
+import { Icon } from "astro-icon/components";
+import { fetchConfigKey } from "../../utils/api-utils";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+const { class: className, style } = Astro.props;
+
+const defaultAnnouncementConfig = {
+	enable: true,
+	title: "公告",
+	content: "欢迎来到博客！",
+	closable: true,
+	link: { enable: false, text: "了解更多", url: "/about/", external: false },
+};
+
+const config = await fetchConfigKey("announcement", defaultAnnouncementConfig);
+---
+
+{config.enable && (
+<WidgetLayout name={config.title} id="announcement" class={className} style={style}>
+  <div>
+    <div class="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-3">
+      {config.content}
+    </div>
+
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        {config.link && config.link.enable && (
+          <a
+            href={config.link.url}
+            target={config.link.external ? "_blank" : "_self"}
+            rel={config.link.external ? "noopener noreferrer" : undefined}
+            class="btn-plain rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 transition-transform"
+          >
+            {config.link.text}
+          </a>
+        )}
+      </div>
+
+      {config.closable && (
+        <button
+          class="btn-plain rounded-lg h-8 w-8 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          onclick="this.closest('widget-layout').style.display='none'"
+          aria-label="关闭"
+        >
+          <Icon is:inline name="fa6-solid:xmark" class="text-sm" />
+        </button>
+      )}
+    </div>
+  </div>
+</WidgetLayout>
+)}

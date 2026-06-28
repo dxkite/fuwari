@@ -1,0 +1,55 @@
+---
+import { siteConfig } from "../../config";
+import { url } from "../../utils/url-utils";
+import WidgetLayout from "./WidgetLayout.astro";
+import "../../styles/toc.css";
+
+interface Props {
+    class?: string;
+    style?: string;
+}
+
+const { class: className, style } = Astro.props;
+const isPostsRoute = Astro.url.pathname.startsWith(url("/posts/"));
+---
+
+{isPostsRoute && siteConfig.toc.enable && (
+<WidgetLayout name="目录" id="sidebar-toc" class={className} style={style}>
+  <div class="toc-scroll-container" style="max-height: calc(100vh - 25rem)">
+    <div id="sidebar-toc-content" class="toc-content">
+      <!-- TOCManager 动态填充 -->
+    </div>
+  </div>
+</WidgetLayout>
+)}
+
+<script>
+  import { TOCManager } from "../../utils/toc-utils";
+
+  declare global {
+    interface Window { _sidebarTOC?: TOCManager }
+  }
+
+  function initSidebarTOC() {
+    const tocContent = document.getElementById("sidebar-toc-content");
+    if (!tocContent) return;
+
+    window._sidebarTOC?.cleanup();
+    window._sidebarTOC = new TOCManager({
+      contentId: "sidebar-toc-content",
+      indicatorId: "sidebar-active-indicator",
+      maxLevel: 3,
+      scrollOffset: 80,
+    });
+    window._sidebarTOC.init();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSidebarTOC);
+  } else {
+    initSidebarTOC();
+  }
+
+  // post→post Swup 跳转后重新扫描新文章标题
+  document.addEventListener("swup:contentReplaced", () => setTimeout(initSidebarTOC, 100));
+</script>
